@@ -36,6 +36,13 @@ const EXAMPLE_TOPICS = [
   },
 ];
 
+const LOADING_MESSAGES = [
+  '💡 알고리즘 트렌드 분석 중...',
+  '🔥 시청 이탈 방지 3초 후킹 문구 생성 중...',
+  '🎬 타임라인별 나레이션 및 연출 구성 중...',
+  '🏷️ 노출 상승을 위한 최적 해시태그 추출 중...',
+];
+
 export default function Home() {
   const [topic, setTopic] = useState('');
   const [targetAudience, setTargetAudience] = useState('');
@@ -43,8 +50,12 @@ export default function Home() {
   const [tone, setTone] = useState('재미있고 흥미진진한');
 
   const [loading, setLoading] = useState(false);
+  const [loadingStep, setLoadingStep] = useState(0);
   const [result, setResult] = useState<ScriptData | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Toast 및 복사 상태
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [copiedAll, setCopiedAll] = useState(false);
   const [copiedHashtags, setCopiedHashtags] = useState(false);
@@ -55,16 +66,35 @@ export default function Home() {
 
   const resultRef = useRef<HTMLElement>(null);
 
-  // 초기 로드 시 로컬스토리지에서 이력 읽어오기
+  // 초기 로드 시 로컬스토리지 이력 읽기
   useEffect(() => {
     setHistory(getHistory());
   }, []);
+
+  // 로딩 인터벌 관리
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (loading) {
+      setLoadingStep(0);
+      interval = setInterval(() => {
+        setLoadingStep((prev) => (prev + 1) % LOADING_MESSAGES.length);
+      }, 1500);
+    }
+    return () => clearInterval(interval);
+  }, [loading]);
 
   useEffect(() => {
     if (result && resultRef.current) {
       resultRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   }, [result]);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage(null);
+    }, 2500);
+  };
 
   const applyExample = (example: (typeof EXAMPLE_TOPICS)[number]) => {
     setTopic(example.topic);
@@ -101,7 +131,7 @@ export default function Home() {
 
       setResult(data.data);
 
-      // 생성 성공 시 로컬스토리지에 이력 자동 저장
+      // 로컬스토리지 이력 저장
       const updatedHistory = saveHistoryItem({
         topic,
         targetAudience,
@@ -110,6 +140,7 @@ export default function Home() {
         script: data.data,
       });
       setHistory(updatedHistory);
+      showToast('✨ 대본이 성공적으로 생성되었습니다!');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : '오류가 발생했습니다.');
     } finally {
@@ -117,7 +148,6 @@ export default function Home() {
     }
   };
 
-  // 이력 항목 클릭 시 복원
   const handleSelectHistory = (item: HistoryItem) => {
     setTopic(item.topic);
     setTargetAudience(item.targetAudience || '');
@@ -125,19 +155,21 @@ export default function Home() {
     if (item.tone) setTone(item.tone);
     setResult(item.script as ScriptData);
     setShowHistory(false);
+    showToast('📋 이력에서 대본을 불러왔습니다.');
   };
 
-  // 이력 개별 삭제
   const handleDeleteHistory = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     const updated = deleteHistoryItem(id);
     setHistory(updated);
+    showToast('🗑️ 이력이 삭제되었습니다.');
   };
 
   const copyToClipboard = async (text: string, index: number) => {
     try {
       await navigator.clipboard.writeText(text);
       setCopiedIndex(index);
+      showToast('📋 후킹 문구가 복사되었습니다.');
       setTimeout(() => setCopiedIndex(null), 2000);
     } catch {
       setError('클립보드 복사에 실패했습니다.');
@@ -165,6 +197,7 @@ export default function Home() {
     try {
       await navigator.clipboard.writeText(full);
       setCopiedAll(true);
+      showToast('📋 전체 대본이 복사되었습니다.');
       setTimeout(() => setCopiedAll(false), 2000);
     } catch {
       setError('클립보드 복사에 실패했습니다.');
@@ -177,6 +210,7 @@ export default function Home() {
     try {
       await navigator.clipboard.writeText(result.hashtags.join(' '));
       setCopiedHashtags(true);
+      showToast('🏷️ 해시태그가 복사되었습니다.');
       setTimeout(() => setCopiedHashtags(false), 2000);
     } catch {
       setError('클립보드 복사에 실패했습니다.');
@@ -184,7 +218,15 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100 p-4 md:p-8">
+    <main className="min-h-screen bg-slate-950 text-slate-100 p-4 md:p-8 relative">
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 bg-indigo-600 text-white px-4 py-3 rounded-xl shadow-2xl border border-indigo-400/30 flex items-center gap-2 text-sm font-medium animate-bounce">
+          <Sparkles className="w-4 h-4 text-amber-300 shrink-0" />
+          <span>{toastMessage}</span>
+        </div>
+      )}
+
       <div className="max-w-4xl mx-auto space-y-8">
         <header className="relative text-center space-y-3 pt-6">
           <div className="flex items-center justify-between border-b border-slate-800 pb-4 mb-2">
@@ -193,7 +235,6 @@ export default function Home() {
               <span>AI 기반 숏폼 치트키</span>
             </div>
 
-            {/* 히스토리 토글 버튼 */}
             <button
               type="button"
               onClick={() => setShowHistory(!showHistory)}
@@ -212,7 +253,6 @@ export default function Home() {
             알고리즘을 타는 3초 후킹 문구와 타임라인별 숏폼 대본을 몇 초 만에 자동으로 제작하세요.
           </p>
 
-          {/* 히스토리 드롭다운 영역 */}
           {showHistory && (
             <div className="text-left bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-2xl space-y-3 animate-fadeIn mt-4">
               <div className="flex justify-between items-center border-b border-slate-800 pb-2">
@@ -381,7 +421,7 @@ export default function Home() {
                 {loading ? (
                   <>
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    <span>3초 후킹 대본 생성 중...</span>
+                    <span>생성 처리 중...</span>
                   </>
                 ) : (
                   <>
@@ -403,12 +443,22 @@ export default function Home() {
               </div>
             )}
 
+            {/* 단계별 스켈레톤 로딩 UI */}
             {loading && (
-              <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-12 text-center min-h-[400px] flex flex-col items-center justify-center space-y-4">
-                <div className="w-8 h-8 border-2 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
-                <p className="text-slate-400 text-sm">
-                  알고리즘을 타는 후킹 문구를 구성하고 있습니다...
-                </p>
+              <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-8 min-h-[400px] flex flex-col items-center justify-center space-y-6 animate-pulse">
+                <div className="w-12 h-12 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" />
+                <div className="text-center space-y-2">
+                  <p className="text-indigo-400 font-semibold text-base transition-all duration-300">
+                    {LOADING_MESSAGES[loadingStep]}
+                  </p>
+                  <p className="text-slate-500 text-xs">AI가 최적의 대본을 작성하고 있습니다</p>
+                </div>
+
+                {/* Skeleton UI Previews */}
+                <div className="w-full space-y-3 pt-4 border-t border-slate-800/80">
+                  <div className="h-4 bg-slate-800 rounded-md w-3/4 mx-auto"></div>
+                  <div className="h-4 bg-slate-800 rounded-md w-1/2 mx-auto"></div>
+                </div>
               </div>
             )}
 
