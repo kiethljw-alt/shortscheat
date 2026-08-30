@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Sparkles, Copy, Check, Video, Zap } from 'lucide-react';
+import { Sparkles, Copy, Check, Video, Zap, History, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import { getHistory, saveHistoryItem, deleteHistoryItem, HistoryItem } from '@/lib/storage';
 
 interface ScriptData {
   title: string;
@@ -48,7 +49,16 @@ export default function Home() {
   const [copiedAll, setCopiedAll] = useState(false);
   const [copiedHashtags, setCopiedHashtags] = useState(false);
 
+  // 이력(History) 관리 상태
+  const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+
   const resultRef = useRef<HTMLElement>(null);
+
+  // 초기 로드 시 로컬스토리지에서 이력 읽어오기
+  useEffect(() => {
+    setHistory(getHistory());
+  }, []);
 
   useEffect(() => {
     if (result && resultRef.current) {
@@ -90,11 +100,38 @@ export default function Home() {
       }
 
       setResult(data.data);
+
+      // 생성 성공 시 로컬스토리지에 이력 자동 저장
+      const updatedHistory = saveHistoryItem({
+        topic,
+        targetAudience,
+        platform,
+        tone,
+        script: data.data,
+      });
+      setHistory(updatedHistory);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : '오류가 발생했습니다.');
     } finally {
       setLoading(false);
     }
+  };
+
+  // 이력 항목 클릭 시 복원
+  const handleSelectHistory = (item: HistoryItem) => {
+    setTopic(item.topic);
+    setTargetAudience(item.targetAudience || '');
+    if (item.platform) setPlatform(item.platform);
+    if (item.tone) setTone(item.tone);
+    setResult(item.script as ScriptData);
+    setShowHistory(false);
+  };
+
+  // 이력 개별 삭제
+  const handleDeleteHistory = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    const updated = deleteHistoryItem(id);
+    setHistory(updated);
   };
 
   const copyToClipboard = async (text: string, index: number) => {
@@ -149,17 +186,73 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100 p-4 md:p-8">
       <div className="max-w-4xl mx-auto space-y-8">
-        <header className="text-center space-y-3 pt-6">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-sm font-medium">
-            <Zap className="w-4 h-4" />
-            <span>AI 기반 숏폼 치트키</span>
+        <header className="relative text-center space-y-3 pt-6">
+          <div className="flex items-center justify-between border-b border-slate-800 pb-4 mb-2">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs md:text-sm font-medium">
+              <Zap className="w-4 h-4" />
+              <span>AI 기반 숏폼 치트키</span>
+            </div>
+
+            {/* 히스토리 토글 버튼 */}
+            <button
+              type="button"
+              onClick={() => setShowHistory(!showHistory)}
+              className="px-3.5 py-1.5 text-xs md:text-sm rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700/80 transition flex items-center gap-1.5 shadow-sm"
+            >
+              <History className="w-4 h-4 text-indigo-400" />
+              <span>이력 ({history.length})</span>
+              {showHistory ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            </button>
           </div>
+
           <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
             ShortsCheat
           </h1>
           <p className="text-slate-400 text-sm md:text-base max-w-lg mx-auto">
             알고리즘을 타는 3초 후킹 문구와 타임라인별 숏폼 대본을 몇 초 만에 자동으로 제작하세요.
           </p>
+
+          {/* 히스토리 드롭다운 영역 */}
+          {showHistory && (
+            <div className="text-left bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-2xl space-y-3 animate-fadeIn mt-4">
+              <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+                <span className="text-xs font-semibold text-indigo-400 uppercase tracking-wider">
+                  📋 최근 생성한 대본 목록 (최대 10개)
+                </span>
+                <span className="text-xs text-slate-500">클릭하면 대본을 불러옵니다</span>
+              </div>
+              {history.length === 0 ? (
+                <p className="text-xs text-slate-500 py-3 text-center">저장된 대본 생성 이력이 없습니다.</p>
+              ) : (
+                <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                  {history.map((item) => (
+                    <div
+                      key={item.id}
+                      onClick={() => handleSelectHistory(item)}
+                      className="flex items-center justify-between p-3 bg-slate-950 hover:bg-slate-800/80 rounded-xl cursor-pointer border border-slate-800/80 transition group"
+                    >
+                      <div className="overflow-hidden mr-2 space-y-0.5">
+                        <p className="text-xs font-semibold text-slate-200 truncate">
+                          {item.topic}
+                        </p>
+                        <p className="text-[11px] text-slate-400 truncate">
+                          {item.platform || 'Shorts'} • {item.tone || '기본'} • {item.createdAt}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => handleDeleteHistory(e, item.id)}
+                        className="text-slate-500 hover:text-red-400 p-1.5 rounded-lg hover:bg-red-950/30 transition shrink-0"
+                        title="삭제"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </header>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
