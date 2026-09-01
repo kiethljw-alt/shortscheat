@@ -1,12 +1,15 @@
+import { scriptDataSchema } from "@/lib/schemas";
+import { z } from "zod";
+
 export interface HistoryItem {
-    id: string;
-    createdAt: string;
-    topic: string;
-    targetAudience?: string;
-    platform?: string;
-    tone?: string;
-    script: any;
-  }
+  id: string;
+  createdAt: string;
+  topic: string;
+  targetAudience?: string;
+  platform?: string;
+  tone?: string;
+  script: z.infer<typeof scriptDataSchema>;
+}
   
   const STORAGE_KEY = "shortscheat_history_v1";
   

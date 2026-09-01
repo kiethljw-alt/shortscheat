@@ -1,8 +1,11 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Sparkles, Copy, Check, Video, Zap, History, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import { getHistory, saveHistoryItem, deleteHistoryItem, HistoryItem } from '@/lib/storage';
+import Header from '@/components/Header';
+import { createClient } from '@/lib/supabase/client';
+import { User } from '@supabase/supabase-js';
 
 interface ScriptData {
   title: string;
@@ -54,6 +57,11 @@ export default function Home() {
   const [result, setResult] = useState<ScriptData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Auth & Credits 상태
+  const [user, setUser] = useState<User | null>(null);
+  const [creditsLeft, setCreditsLeft] = useState<number | null>(null);
+  const [loginModalOpen, setLoginModalOpen] = useState(false);
+
   // Toast 및 복사 상태
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
@@ -66,10 +74,46 @@ export default function Home() {
 
   const resultRef = useRef<HTMLElement>(null);
 
-  // 초기 로드 시 로컬스토리지 이력 읽기
+  const supabase = useMemo(() => createClient(), []);
+
+  // 사용자 정보 및 크레딧 불러오기 함수
+  const fetchUserAndCredits = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    setUser(user);
+
+    if (user) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('credits_left')
+        .eq('id', user.id)
+        .single();
+
+      if (profile) {
+        setCreditsLeft(profile.credits_left);
+      }
+    } else {
+      setCreditsLeft(null);
+    }
+  };
+
+  // 초기 로드 시 유저 세션 및 이력 불러오기
   useEffect(() => {
     setHistory(getHistory());
-  }, []);
+    fetchUserAndCredits();
+
+    // 로그인 상태 변화 리스너 등록
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+      fetchUserAndCredits();
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [supabase]);
+
+  useEffect(() => {
+    if (user) setLoginModalOpen(false);
+  }, [user]);
 
   // 로딩 인터벌 관리
   useEffect(() => {
@@ -102,10 +146,28 @@ export default function Home() {
     setError(null);
   };
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+    setCreditsLeft(null);
+    showToast('로그아웃 되었습니다.');
+  };
+
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!topic.trim()) {
       setError('주제를 입력해 주세요.');
+      return;
+    }
+
+    if (!user) {
+      setLoginModalOpen(true);
+      setError('대본을 생성하려면 로그인이 필요합니다.');
+      return;
+    }
+
+    if (creditsLeft !== null && creditsLeft <= 0) {
+      setError('무료 크레딧을 모두 소진하셨습니다. 충전 후 이용해 주세요.');
       return;
     }
 
@@ -126,10 +188,22 @@ export default function Home() {
       const data = await response.json();
 
       if (!response.ok) {
+        if (response.status === 401) {
+          setLoginModalOpen(true);
+        }
+        if (response.status === 401 || response.status === 403) {
+          await fetchUserAndCredits();
+        }
         throw new Error(data.error || '대본 생성 실패');
       }
 
       setResult(data.data);
+
+      if (typeof data.creditsLeft === 'number') {
+        setCreditsLeft(data.creditsLeft);
+      } else {
+        await fetchUserAndCredits();
+      }
 
       // 로컬스토리지 이력 저장
       const updatedHistory = saveHistoryItem({
@@ -218,7 +292,16 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100 p-4 md:p-8 relative">
+    <main className="min-h-screen bg-slate-950 text-slate-100 relative">
+      {/* 1. 로그인 정보 및 실시간 크레딧 전달 Header */}
+      <Header
+        user={user}
+        creditsLeft={creditsLeft}
+        loginModalOpen={loginModalOpen}
+        onLoginModalOpenChange={setLoginModalOpen}
+        onLogout={handleLogout}
+      />
+
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 bg-indigo-600 text-white px-4 py-3 rounded-xl shadow-2xl border border-indigo-400/30 flex items-center gap-2 text-sm font-medium animate-bounce">
@@ -227,8 +310,8 @@ export default function Home() {
         </div>
       )}
 
-      <div className="max-w-4xl mx-auto space-y-8">
-        <header className="relative text-center space-y-3 pt-6">
+      <div className="max-w-4xl mx-auto p-4 md:p-8 space-y-8">
+        <header className="relative text-center space-y-3 pt-2">
           <div className="flex items-center justify-between border-b border-slate-800 pb-4 mb-2">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs md:text-sm font-medium">
               <Zap className="w-4 h-4" />
@@ -415,7 +498,7 @@ export default function Home() {
 
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || (user !== null && creditsLeft !== null && creditsLeft <= 0)}
                 className="w-full py-3.5 px-4 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:via-purple-600 hover:to-pink-600 text-white font-semibold rounded-xl transition-all duration-200 shadow-lg shadow-indigo-500/25 disabled:opacity-50 flex items-center justify-center gap-2 text-sm"
               >
                 {loading ? (
@@ -426,7 +509,15 @@ export default function Home() {
                 ) : (
                   <>
                     <Sparkles className="w-4 h-4" />
-                    <span>대본 생성하기</span>
+                    <span>
+                      {!user
+                        ? '로그인하고 대본 생성하기'
+                        : creditsLeft !== null && creditsLeft <= 0
+                          ? '크레딧이 부족합니다'
+                          : creditsLeft !== null
+                            ? `대본 생성하기 (남은 ${creditsLeft}회)`
+                            : '대본 생성하기'}
+                    </span>
                   </>
                 )}
               </button>

@@ -1,6 +1,16 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { scriptDataSchema } from '@/lib/schemas';
+import { createClient } from '@/lib/supabase/server';
+
+async function refundCredit(
+  supabase: Awaited<ReturnType<typeof createClient>>
+) {
+  const { error } = await supabase.rpc('refund_credit');
+  if (error) {
+    console.error('Credit refund failed:', error);
+  }
+}
 
 export async function POST(req: Request) {
   if (!process.env.OPENAI_API_KEY) {
@@ -10,21 +20,85 @@ export async function POST(req: Request) {
     );
   }
 
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return NextResponse.json(
+      { error: '대본을 생성하려면 로그인이 필요합니다.' },
+      { status: 401 }
+    );
+  }
+
+  let body: {
+    topic?: unknown;
+    targetAudience?: unknown;
+    platform?: unknown;
+    tone?: unknown;
+  };
+
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: '잘못된 요청입니다.' }, { status: 400 });
+  }
+
+  const { topic, targetAudience, platform, tone } = body;
+
+  if (!topic || typeof topic !== 'string' || !topic.trim()) {
+    return NextResponse.json({ error: '주제를 입력해 주세요.' }, { status: 400 });
+  }
+
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('credits_left')
+    .eq('id', user.id)
+    .single();
+
+  if (profileError || !profile) {
+    return NextResponse.json(
+      { error: '사용자 프로필 정보를 찾을 수 없습니다.' },
+      { status: 404 }
+    );
+  }
+
+  if (profile.credits_left <= 0) {
+    return NextResponse.json(
+      { error: '무료 크레딧을 모두 소진하셨습니다. 충전 후 이용해 주세요.' },
+      { status: 403 }
+    );
+  }
+
+  const { data: deductedCredits, error: decrementError } = await supabase.rpc(
+    'decrement_credit'
+  );
+
+  if (decrementError) {
+    console.error('Credit decrement RPC error:', decrementError);
+    return NextResponse.json(
+      {
+        error:
+          '크레딧 차감에 실패했습니다. Supabase에 decrement_credit 함수가 배포됐는지 확인해 주세요.',
+      },
+      { status: 500 }
+    );
+  }
+
+  if (deductedCredits === null || typeof deductedCredits !== 'number') {
+    return NextResponse.json(
+      { error: '무료 크레딧을 모두 소진하셨습니다. 충전 후 이용해 주세요.' },
+      { status: 403 }
+    );
+  }
+
   const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
   });
 
-  try {
-    const { topic, targetAudience, platform, tone } = await req.json();
-
-    if (!topic || typeof topic !== 'string' || !topic.trim()) {
-      return NextResponse.json(
-        { error: '주제를 입력해 주세요.' },
-        { status: 400 }
-      );
-    }
-
-    const systemPrompt = `
+  const systemPrompt = `
 You are a top-tier viral short-form content producer and scriptwriter for YouTube Shorts, Instagram Reels, and TikTok.
 Your goal is to turn the given topic into an insanely engaging, high-retention Korean script.
 
@@ -74,13 +148,14 @@ Structure your response strictly in JSON format:
 }
 `;
 
-    const userPrompt = `
+  const userPrompt = `
 - 주제/아이디어: ${topic.trim()}
-- 타깃 시청자: ${targetAudience || '일반 대중'}
-- 플랫폼: ${platform || 'YouTube Shorts'}
-- 톤앤매너: ${tone || '재미있고 흥미진진한'}
+- 타깃 시청자: ${typeof targetAudience === 'string' && targetAudience ? targetAudience : '일반 대중'}
+- 플랫폼: ${typeof platform === 'string' && platform ? platform : 'YouTube Shorts'}
+- 톤앤매너: ${typeof tone === 'string' && tone ? tone : '재미있고 흥미진진한'}
     `;
 
+  try {
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
@@ -92,20 +167,37 @@ Structure your response strictly in JSON format:
     });
 
     const resultText = completion.choices[0].message.content;
-    const parsed = JSON.parse(resultText || '{}');
-    const validated = scriptDataSchema.safeParse(parsed);
-
-    if (!validated.success) {
-      console.error('Script schema validation failed:', validated.error.flatten());
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(resultText || '{}');
+    } catch (parseError) {
+      console.error('OpenAI JSON parse failed:', parseError);
+      await refundCredit(supabase);
       return NextResponse.json(
         { error: 'AI 응답 형식이 올바르지 않습니다. 다시 시도해 주세요.' },
         { status: 502 }
       );
     }
 
-    return NextResponse.json({ success: true, data: validated.data });
+    const validated = scriptDataSchema.safeParse(parsed);
+
+    if (!validated.success) {
+      console.error('Script schema validation failed:', validated.error.flatten());
+      await refundCredit(supabase);
+      return NextResponse.json(
+        { error: 'AI 응답 형식이 올바르지 않습니다. 다시 시도해 주세요.' },
+        { status: 502 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: validated.data,
+      creditsLeft: deductedCredits,
+    });
   } catch (error) {
     console.error('OpenAI API Error:', error);
+    await refundCredit(supabase);
     return NextResponse.json(
       { error: '대본 생성 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.' },
       { status: 500 }
