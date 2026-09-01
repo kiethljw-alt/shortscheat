@@ -24,7 +24,7 @@ if (!token || !parentId) {
   process.exit(1);
 }
 
-const mdPath = path.join(__dirname, "..", "docs", "notion-outsource-builder.md");
+const mdPath = path.join(__dirname, "..", "docs", "notion-shortscheat.md");
 const markdown = await fs.readFile(mdPath, "utf-8");
 
 const blocks = markdownToNotionBlocks(markdown);
@@ -40,7 +40,7 @@ const res = await fetch("https://api.notion.com/v1/pages", {
     parent: { page_id: formatId(parentId) },
     properties: {
       title: {
-        title: [{ text: { content: "Outsource Builder — 외주 개발 자동 생성 툴" } }],
+        title: [{ text: { content: "ShortsCheat — AI 숏폼 대본 생성 서비스" } }],
       },
     },
     children: blocks.slice(0, 100),
