@@ -2,8 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Sparkles, Copy, Check, Video, Zap, History, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import Link from 'next/link';
 import { getHistory, saveHistoryItem, deleteHistoryItem, HistoryItem } from '@/lib/storage';
 import Header from '@/components/Header';
+import RechargeModal from '@/components/RechargeModal';
 import { createClient } from '@/lib/supabase/client';
 import { User } from '@supabase/supabase-js';
 
@@ -61,6 +63,7 @@ export default function Home() {
   const [user, setUser] = useState<User | null>(null);
   const [creditsLeft, setCreditsLeft] = useState<number | null>(null);
   const [loginModalOpen, setLoginModalOpen] = useState(false);
+  const [rechargeModalOpen, setRechargeModalOpen] = useState(false);
 
   // Toast 및 복사 상태
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -167,6 +170,7 @@ export default function Home() {
     }
 
     if (creditsLeft !== null && creditsLeft <= 0) {
+      setRechargeModalOpen(true);
       setError('무료 크레딧을 모두 소진하셨습니다. 충전 후 이용해 주세요.');
       return;
     }
@@ -190,6 +194,9 @@ export default function Home() {
       if (!response.ok) {
         if (response.status === 401) {
           setLoginModalOpen(true);
+        }
+        if (response.status === 403) {
+          setRechargeModalOpen(true);
         }
         if (response.status === 401 || response.status === 403) {
           await fetchUserAndCredits();
@@ -300,7 +307,16 @@ export default function Home() {
         loginModalOpen={loginModalOpen}
         onLoginModalOpenChange={setLoginModalOpen}
         onLogout={handleLogout}
+        onRechargeClick={() => setRechargeModalOpen(true)}
       />
+
+      {user && (
+        <RechargeModal
+          open={rechargeModalOpen}
+          user={user}
+          onClose={() => setRechargeModalOpen(false)}
+        />
+      )}
 
       {/* Toast Notification */}
       {toastMessage && (
@@ -498,7 +514,7 @@ export default function Home() {
 
               <button
                 type="submit"
-                disabled={loading || (user !== null && creditsLeft !== null && creditsLeft <= 0)}
+                disabled={loading}
                 className="w-full py-3.5 px-4 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:via-purple-600 hover:to-pink-600 text-white font-semibold rounded-xl transition-all duration-200 shadow-lg shadow-indigo-500/25 disabled:opacity-50 flex items-center justify-center gap-2 text-sm"
               >
                 {loading ? (
@@ -513,7 +529,7 @@ export default function Home() {
                       {!user
                         ? '로그인하고 대본 생성하기'
                         : creditsLeft !== null && creditsLeft <= 0
-                          ? '크레딧이 부족합니다'
+                          ? '충전하고 계속하기'
                           : creditsLeft !== null
                             ? `대본 생성하기 (남은 ${creditsLeft}회)`
                             : '대본 생성하기'}
@@ -670,6 +686,16 @@ export default function Home() {
             )}
           </section>
         </div>
+
+        <footer className="pt-8 pb-4 text-center text-xs text-slate-600 space-x-3">
+          <Link href="/terms" className="hover:text-slate-400 transition">
+            이용약관
+          </Link>
+          <span>·</span>
+          <Link href="/privacy" className="hover:text-slate-400 transition">
+            개인정보처리방침
+          </Link>
+        </footer>
       </div>
     </main>
   );

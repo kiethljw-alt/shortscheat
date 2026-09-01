@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/client';
 import { User } from '@supabase/supabase-js';
-import { Zap, LogIn, LogOut, X } from 'lucide-react';
+import { Zap, LogIn, LogOut, X, Plus } from 'lucide-react';
 
 type HeaderProps = {
   user: User | null;
@@ -10,6 +10,7 @@ type HeaderProps = {
   loginModalOpen: boolean;
   onLoginModalOpenChange: (open: boolean) => void;
   onLogout: () => void;
+  onRechargeClick: () => void;
 };
 
 export default function Header({
@@ -18,6 +19,7 @@ export default function Header({
   loginModalOpen,
   onLoginModalOpenChange,
   onLogout,
+  onRechargeClick,
 }: HeaderProps) {
   const supabase = createClient();
 
@@ -52,6 +54,14 @@ export default function Header({
                   크레딧: <strong className="text-amber-300">{creditsLeft ?? 0}</strong>회
                 </span>
               </div>
+              <button
+                type="button"
+                onClick={onRechargeClick}
+                className="flex items-center gap-1 text-xs text-indigo-300 hover:text-indigo-200 px-2.5 py-1.5 rounded-lg border border-indigo-700/50 hover:bg-indigo-950/50 transition"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>충전</span>
+              </button>
               <span className="text-xs text-slate-400 hidden sm:inline">{user.email}</span>
               <button
                 type="button"
@@ -109,6 +119,18 @@ export default function Header({
               카카오로 시작하기
             </button>
           </div>
+
+          <p className="text-[11px] text-slate-500 text-center mt-4">
+            계속 진행하면{' '}
+            <a href="/terms" target="_blank" className="underline hover:text-slate-300">
+              이용약관
+            </a>{' '}
+            및{' '}
+            <a href="/privacy" target="_blank" className="underline hover:text-slate-300">
+              개인정보처리방침
+            </a>
+            에 동의하는 것으로 간주됩니다.
+          </p>
         </div>
       </div>
     )}
