@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { SUBSCRIPTION_PLAN } from "@/lib/subscriptionPlan";
 
@@ -38,6 +39,7 @@ export async function POST(req: Request) {
 
   if (fetchError) {
     console.error("Failed to fetch due subscriptions:", fetchError);
+    Sentry.captureException(fetchError);
     return NextResponse.json({ error: "internal error" }, { status: 500 });
   }
 
@@ -85,6 +87,10 @@ export async function POST(req: Request) {
     if (!chargeRes.ok) {
       const errorBody = await chargeRes.json().catch(() => null);
       console.error(`Renewal charge failed for user ${sub.user_id}:`, errorBody);
+      Sentry.captureMessage("Subscription renewal charge failed", {
+        level: "warning",
+        extra: { userId: sub.user_id, orderId, errorBody },
+      });
       await admin
         .from("subscriptions")
         .update({ status: "past_due" })
@@ -104,6 +110,9 @@ export async function POST(req: Request) {
 
     if (grantError) {
       console.error(`Credit grant failed for user ${sub.user_id}:`, grantError);
+      Sentry.captureException(grantError, {
+        extra: { userId: sub.user_id, orderId },
+      });
       results.push({ userId: sub.user_id, ok: false, reason: "grant failed" });
       continue;
     }

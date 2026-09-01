@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
+import * as Sentry from '@sentry/nextjs';
 import { scriptDataSchema } from '@/lib/schemas';
 import { createClient } from '@/lib/supabase/server';
 
@@ -30,6 +31,19 @@ export async function POST(req: Request) {
     return NextResponse.json(
       { error: '대본을 생성하려면 로그인이 필요합니다.' },
       { status: 401 }
+    );
+  }
+
+  const { data: withinRateLimit, error: rateLimitError } = await supabase.rpc(
+    'check_generate_rate_limit'
+  );
+
+  if (rateLimitError) {
+    console.error('Rate limit RPC error:', rateLimitError);
+  } else if (withinRateLimit === false) {
+    return NextResponse.json(
+      { error: '요청이 너무 잦습니다. 잠시 후 다시 시도해 주세요.' },
+      { status: 429 }
     );
   }
 
@@ -78,6 +92,7 @@ export async function POST(req: Request) {
 
   if (decrementError) {
     console.error('Credit decrement RPC error:', decrementError);
+    Sentry.captureException(decrementError);
     return NextResponse.json(
       {
         error:
@@ -96,6 +111,8 @@ export async function POST(req: Request) {
 
   const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
+    timeout: 30_000,
+    maxRetries: 2,
   });
 
   const systemPrompt = `
@@ -197,6 +214,7 @@ Structure your response strictly in JSON format:
     });
   } catch (error) {
     console.error('OpenAI API Error:', error);
+    Sentry.captureException(error);
     await refundCredit(supabase);
     return NextResponse.json(
       { error: '대본 생성 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.' },

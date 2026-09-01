@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase/server";
 
 export async function POST(req: Request) {
@@ -83,6 +84,10 @@ export async function POST(req: Request) {
   if (!confirmRes.ok) {
     const errorBody = await confirmRes.json().catch(() => null);
     console.error("Toss payment confirm failed:", errorBody);
+    Sentry.captureMessage("Toss payment confirm failed", {
+      level: "warning",
+      extra: { orderId, errorBody },
+    });
     return NextResponse.json(
       { error: errorBody?.message ?? "결제 승인에 실패했습니다." },
       { status: 502 }
@@ -96,6 +101,7 @@ export async function POST(req: Request) {
 
   if (rpcError) {
     console.error("confirm_order RPC failed:", rpcError);
+    Sentry.captureException(rpcError, { extra: { orderId, paymentKey } });
     return NextResponse.json(
       {
         error:

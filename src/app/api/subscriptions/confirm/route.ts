@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { SUBSCRIPTION_PLAN } from "@/lib/subscriptionPlan";
@@ -59,6 +60,10 @@ export async function POST(req: Request) {
   if (!issueRes.ok) {
     const errorBody = await issueRes.json().catch(() => null);
     console.error("Billing key issue failed:", errorBody);
+    Sentry.captureMessage("Billing key issue failed", {
+      level: "warning",
+      extra: { userId: user.id, errorBody },
+    });
     return NextResponse.json(
       { error: errorBody?.message ?? "카드 등록에 실패했습니다." },
       { status: 502 }
@@ -90,6 +95,10 @@ export async function POST(req: Request) {
   if (!chargeRes.ok) {
     const errorBody = await chargeRes.json().catch(() => null);
     console.error("First billing charge failed:", errorBody);
+    Sentry.captureMessage("First billing charge failed", {
+      level: "warning",
+      extra: { userId: user.id, orderId, errorBody },
+    });
     return NextResponse.json(
       { error: errorBody?.message ?? "결제에 실패했습니다." },
       { status: 502 }
@@ -115,6 +124,9 @@ export async function POST(req: Request) {
 
   if (upsertError) {
     console.error("Subscription upsert failed:", upsertError);
+    Sentry.captureException(upsertError, {
+      extra: { userId: user.id, billingKey },
+    });
     return NextResponse.json(
       {
         error:
@@ -131,6 +143,7 @@ export async function POST(req: Request) {
 
   if (grantError) {
     console.error("grant_subscription_credits failed:", grantError);
+    Sentry.captureException(grantError, { extra: { userId: user.id } });
     return NextResponse.json(
       {
         error:
