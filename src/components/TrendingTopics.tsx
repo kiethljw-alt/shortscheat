@@ -63,7 +63,11 @@ export default function TrendingTopics({ onSelectTopic }: TrendingTopicsProps) {
             <button
               key={cat.name}
               type="button"
-              onClick={() => onSelectTopic(`${cat.name} 관련 요즘 뜨는 숏폼 소재`)}
+              onClick={() =>
+                onSelectTopic(
+                  `${cat.name} 카테고리에서 사람들이 실제로 도움될 만한 구체적인 꿀팁이나 노하우 하나를 숫자와 함께 소개하는 숏폼`
+                )
+              }
               className="flex items-center gap-1 rounded-lg border border-rose-700/50 bg-rose-950/40 px-2.5 py-1.5 text-rose-300 transition hover:border-rose-500 hover:bg-rose-900/40"
             >
               <TrendingUp className="w-3 h-3 shrink-0" />
@@ -80,7 +84,11 @@ export default function TrendingTopics({ onSelectTopic }: TrendingTopicsProps) {
             <button
               key={video.id}
               type="button"
-              onClick={() => onSelectTopic(video.title)}
+              onClick={() =>
+                onSelectTopic(
+                  `요즘 "${video.title}"처럼 화제인 소재에서 착안해서, 비슷한 관심을 끌 수 있는 구체적인 숏폼 주제`
+                )
+              }
               title={video.title}
               className="flex items-center gap-1.5 shrink-0 max-w-[220px] rounded-lg border border-slate-700 bg-slate-950/60 px-2.5 py-1.5 text-slate-300 transition hover:border-rose-500/50 hover:bg-slate-900"
             >

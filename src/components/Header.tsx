@@ -35,7 +35,7 @@ export default function Header({
   return (
     <>
     <header className="w-full border-b border-slate-800 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50">
-      <div className="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
+      <div className="max-w-4xl mx-auto px-4 py-2.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
         <div className="flex items-center gap-2">
           <span className="text-xl font-black bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
             ShortsCheat
@@ -45,7 +45,7 @@ export default function Header({
           </span>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center justify-end gap-2">
           {user ? (
             <>
               <div className="flex items-center gap-1 bg-amber-500/10 text-amber-400 border border-amber-500/20 px-3 py-1 rounded-full text-xs font-medium">
@@ -62,7 +62,7 @@ export default function Header({
                 <Plus className="w-3.5 h-3.5" />
                 <span>충전</span>
               </button>
-              <span className="text-xs text-slate-400 hidden sm:inline">{user.email}</span>
+              <span className="text-xs text-slate-400 hidden md:inline">{user.email}</span>
               <button
                 type="button"
                 onClick={onLogout}

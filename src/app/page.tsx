@@ -361,7 +361,7 @@ export default function Home() {
           <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
             ShortsCheat
           </h1>
-          <p className="text-slate-400 text-sm md:text-base max-w-lg mx-auto">
+          <p className="text-slate-400 text-sm md:text-base max-w-lg mx-auto text-balance">
             알고리즘을 타는 3초 후킹 문구와 타임라인별 숏폼 대본을 몇 초 만에 자동으로 제작하세요.
           </p>
 
@@ -491,7 +491,7 @@ export default function Home() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3">
                 <div>
                   <label
                     htmlFor="platform"
