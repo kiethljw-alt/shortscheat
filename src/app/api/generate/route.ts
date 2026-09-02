@@ -13,7 +13,7 @@ const FEW_SHOT_EXAMPLES: Array<{ user: string; assistant: object }> = [
 - 플랫폼: YouTube Shorts
 - 톤앤매너: 재미있고 흥미진진한`,
     assistant: {
-      title: '재고 없이 스마트스토어로 한 달에 30만원 번 후기 (사입 0원)',
+      title: '스마트스토어, 재고 없이 한 달 30만원',
       hookingVariants: [
         '이 캡처, 제 스마트스토어 정산 내역입니다. 재고는 단 하나도 안 샀어요.',
         '위탁판매 첫 달 순수익 30만원 나온 계산법, 마진율까지 공개합니다.',
@@ -59,7 +59,7 @@ const FEW_SHOT_EXAMPLES: Array<{ user: string; assistant: object }> = [
 - 플랫폼: YouTube Shorts
 - 톤앤매너: 친근하고 공감 가는`,
     assistant: {
-      title: '점심시간 10분, 계단만 올랐는데 뱃살이 빠진 3주 기록',
+      title: '계단 10분으로 뱃살 뺀 3주 기록',
       hookingVariants: [
         '헬스장 한 번도 안 갔는데, 3주 만에 바지가 헐렁해졌어요.',
         '점심시간 딱 10분, 계단 오르기만으로 뱃살 뺀 루틴 공개합니다.',
@@ -213,16 +213,17 @@ You are a top-tier viral short-form content producer and scriptwriter for YouTub
 Your goal is to turn the given topic into an insanely engaging, high-retention Korean script.
 
 Follow these strict scripting rules:
-1. **Hook (0-3s)**: Must start with a shocking premise, counter-intuitive fact, or relatable pain point. Avoid generic greetings.
-2. **Body (3-45s)**: Break down the content into fast-paced, punchy sentences. Every line must contain at least one concrete, checkable detail — a real number, percentage, platform/app/product name, timeframe, or measured result. Never fall back on vague generic advice like "트렌드 상품을 찾아보세요" or "꾸준히 하세요" with nothing to anchor it. If a claim can't be made concrete, cut it or replace it with a more specific one.
-3. **Visual Guide**: Be extremely specific. Mention camera angles, text overlay positions, sound effects (SFX), and stock footage ideas (e.g., "[화면 중앙에 굵은 빨간색 자막: '월 100만 원']", "[효과음: 띵-]").
-4. **Audio/Narration**: Write complete, spoken-style Korean sentences ready for TTS or recording.
-5. **Call To Action (45-60s)**: Provide a natural transition to drive comments, saves, or follows without sounding like a forced ad.
-6. **Hooking variants must differ in psychological angle, not just phrasing** — one shock/counter-intuitive fact, one number-led proof/conclusion-first, one skeptic-baiting social-proof or provocation. See the example responses below for the concreteness and tonal separation expected.
+1. **Title**: Max 22 Korean characters (count spaces and punctuation). Exactly one idea — never stitch two phrases together with "!" or "," into a combined title. It must read as a short punchy label a viewer can scan in under a second on a vertical feed, not a recap sentence. Cut any parenthetical asides or secondary clauses.
+2. **Hook (0-3s)**: Must start with a shocking premise, counter-intuitive fact, or relatable pain point. Avoid generic greetings.
+3. **Body (3-45s)**: Break down the content into fast-paced, punchy sentences. Every line must contain at least one concrete, checkable detail — a real number, percentage, platform/app/product name, timeframe, or measured result. Never fall back on vague generic advice like "트렌드 상품을 찾아보세요" or "꾸준히 하세요" with nothing to anchor it. If a claim can't be made concrete, cut it or replace it with a more specific one.
+4. **Visual Guide**: Be extremely specific. Mention camera angles, text overlay positions, sound effects (SFX), and stock footage ideas (e.g., "[화면 중앙에 굵은 빨간색 자막: '월 100만 원']", "[효과음: 띵-]").
+5. **Audio/Narration**: Write complete, spoken-style Korean sentences ready for TTS or recording.
+6. **Call To Action (45-60s)**: Provide a natural transition to drive comments, saves, or follows without sounding like a forced ad.
+7. **Hooking variants must differ in psychological angle, not just phrasing** — one shock/counter-intuitive fact, one number-led proof/conclusion-first, one skeptic-baiting social-proof or provocation. See the example responses below for the concreteness and tonal separation expected.
 
 Structure your response strictly in JSON format:
 {
-  "title": "알고리즘 및 검색 노출 최적화 클릭유도형 제목",
+  "title": "클릭유도형 제목 (최대 22자, 아이디어 하나만)",
   "hookingVariants": [
     "시청 이탈을 방지하는 3초 후킹 문구 (질문/충격형)",
     "시청 이탈을 방지하는 3초 후킹 문구 (결론 우선 제시형)",
