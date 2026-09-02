@@ -5,6 +5,7 @@ import { Sparkles, Copy, Check, Video, Zap, History, Trash2, ChevronDown, Chevro
 import Link from 'next/link';
 import { getHistory, saveHistoryItem, deleteHistoryItem, HistoryItem } from '@/lib/storage';
 import Header from '@/components/Header';
+import TrendingTopics from '@/components/TrendingTopics';
 import RechargeModal from '@/components/RechargeModal';
 import { createClient } from '@/lib/supabase/client';
 import { User } from '@supabase/supabase-js';
@@ -412,6 +413,13 @@ export default function Home() {
                   {error}
                 </div>
               )}
+
+              <TrendingTopics
+                onSelectTopic={(t) => {
+                  setTopic(t);
+                  setError(null);
+                }}
+              />
 
               <div>
                 <label
