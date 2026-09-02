@@ -3,10 +3,12 @@ import * as Sentry from "@sentry/nextjs";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { SUBSCRIPTION_PLAN } from "@/lib/subscriptionPlan";
 
-// 외부 크론(예: Supabase pg_cron, Vercel Cron)이 주기적으로 호출하는 엔드포인트.
+// 외부 크론(Vercel Cron)이 주기적으로 호출하는 엔드포인트.
 // CRON_SECRET 헤더 검증 없이는 아무도 이 라우트를 호출해 실제 카드 결제를
 // 트리거할 수 없도록 막습니다.
-export async function POST(req: Request) {
+// Vercel Cron은 GET으로만 호출하므로 GET을 기본으로 두고, 수동 테스트를 위해
+// POST도 동일한 로직을 공유하도록 남겨둡니다.
+async function renewDueSubscriptions(req: Request) {
   const cronSecret = process.env.CRON_SECRET;
   if (!cronSecret) {
     return NextResponse.json(
@@ -121,4 +123,12 @@ export async function POST(req: Request) {
   }
 
   return NextResponse.json({ processed: results.length, results });
+}
+
+export async function GET(req: Request) {
+  return renewDueSubscriptions(req);
+}
+
+export async function POST(req: Request) {
+  return renewDueSubscriptions(req);
 }

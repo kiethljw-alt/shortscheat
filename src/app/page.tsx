@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Sparkles, Copy, Check, Video, Zap, History, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import Link from 'next/link';
 import { getHistory, saveHistoryItem, deleteHistoryItem, HistoryItem } from '@/lib/storage';
@@ -72,8 +72,8 @@ export default function Home() {
   const [copiedAll, setCopiedAll] = useState(false);
   const [copiedHashtags, setCopiedHashtags] = useState(false);
 
-  // 이력(History) 관리 상태
-  const [history, setHistory] = useState<HistoryItem[]>([]);
+  // 이력(History) 관리 상태 — localStorage는 동기적으로 읽을 수 있으니 effect 없이 초기값으로 바로 로드
+  const [history, setHistory] = useState<HistoryItem[]>(() => getHistory());
   const [showHistory, setShowHistory] = useState(false);
 
   const resultRef = useRef<HTMLElement>(null);
@@ -81,11 +81,14 @@ export default function Home() {
   const supabase = useMemo(() => createClient(), []);
 
   // 사용자 정보 및 크레딧 불러오기 함수
-  const fetchUserAndCredits = async () => {
+  const fetchUserAndCredits = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
     setUser(user);
 
     if (user) {
+      // 로그인 성공이 확인된 시점이므로 로그인 모달을 같이 닫는다.
+      setLoginModalOpen(false);
+
       const { data: profile } = await supabase
         .from('profiles')
         .select('credits_left')
@@ -98,14 +101,14 @@ export default function Home() {
     } else {
       setCreditsLeft(null);
     }
-  };
+  }, [supabase]);
 
-  // 초기 로드 시 유저 세션 및 이력 불러오기
+  // 초기 로드 시 유저 세션 불러오기 + 로그인 상태 변화 리스너 등록
   useEffect(() => {
-    setHistory(getHistory());
-    fetchUserAndCredits();
+    (async () => {
+      await fetchUserAndCredits();
+    })();
 
-    // 로그인 상태 변화 리스너 등록
     const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
       fetchUserAndCredits();
     });
@@ -113,21 +116,14 @@ export default function Home() {
     return () => {
       subscription.unsubscribe();
     };
-  }, [supabase]);
+  }, [supabase, fetchUserAndCredits]);
 
+  // 로딩 인터벌 관리 (loadingStep 초기화는 handleGenerate에서 loading을 켜는 시점에 처리)
   useEffect(() => {
-    if (user) setLoginModalOpen(false);
-  }, [user]);
-
-  // 로딩 인터벌 관리
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (loading) {
-      setLoadingStep(0);
-      interval = setInterval(() => {
-        setLoadingStep((prev) => (prev + 1) % LOADING_MESSAGES.length);
-      }, 1500);
-    }
+    if (!loading) return;
+    const interval = setInterval(() => {
+      setLoadingStep((prev) => (prev + 1) % LOADING_MESSAGES.length);
+    }, 1500);
     return () => clearInterval(interval);
   }, [loading]);
 
@@ -177,6 +173,7 @@ export default function Home() {
     }
 
     setLoading(true);
+    setLoadingStep(0);
     setResult(null);
     setError(null);
     setCopiedAll(false);
