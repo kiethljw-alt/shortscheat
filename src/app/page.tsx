@@ -73,8 +73,9 @@ export default function Home() {
   const [copiedAll, setCopiedAll] = useState(false);
   const [copiedHashtags, setCopiedHashtags] = useState(false);
 
-  // 이력(History) 관리 상태 — localStorage는 동기적으로 읽을 수 있으니 effect 없이 초기값으로 바로 로드
-  const [history, setHistory] = useState<HistoryItem[]>(() => getHistory());
+  // 이력(History) 관리 상태 — 서버 렌더링에는 localStorage가 없으므로 빈 배열로 시작하고
+  // effect에서 채워야 하이드레이션 불일치(서버 "이력 (0)" vs 클라이언트 실제 값)가 안 생긴다.
+  const [history, setHistory] = useState<HistoryItem[]>([]);
   const [showHistory, setShowHistory] = useState(false);
 
   const resultRef = useRef<HTMLElement>(null);
@@ -104,8 +105,12 @@ export default function Home() {
     }
   }, [supabase]);
 
-  // 초기 로드 시 유저 세션 불러오기 + 로그인 상태 변화 리스너 등록
+  // 초기 로드 시 이력(localStorage) 로드 + 유저 세션 불러오기 + 로그인 상태 변화 리스너 등록
   useEffect(() => {
+    // localStorage는 서버에 없는 클라이언트 전용 데이터라 하이드레이션 이후에만 읽어야 한다.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setHistory(getHistory());
+
     (async () => {
       await fetchUserAndCredits();
     })();
