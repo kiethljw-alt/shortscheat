@@ -57,6 +57,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState(0);
   const [result, setResult] = useState<ScriptData | null>(null);
+  const [selectedHookIndex, setSelectedHookIndex] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   // Auth & Credits 상태
@@ -205,6 +206,7 @@ export default function Home() {
       }
 
       setResult(data.data);
+      setSelectedHookIndex(0);
 
       if (typeof data.creditsLeft === 'number') {
         setCreditsLeft(data.creditsLeft);
@@ -235,6 +237,7 @@ export default function Home() {
     if (item.platform) setPlatform(item.platform);
     if (item.tone) setTone(item.tone);
     setResult(item.script as ScriptData);
+    setSelectedHookIndex(0);
     setShowHistory(false);
     showToast('📋 이력에서 대본을 불러왔습니다.');
   };
@@ -263,11 +266,8 @@ export default function Home() {
     const full = [
       `# ${result.title}`,
       '',
-      '## 후킹 (택1)',
-      ...result.hookingVariants.map((h, i) => `${i + 1}. ${h}`),
-      '',
       '## 타임라인 대본',
-      ...result.scriptLines.map(
+      ...effectiveScriptLines.map(
         (line) => `[${line.time}]\nVisual: ${line.visual}\nAudio: ${line.audio}`
       ),
       '',
@@ -284,6 +284,16 @@ export default function Home() {
       setError('클립보드 복사에 실패했습니다.');
     }
   };
+
+  // 선택된 후킹 문구를 타임라인 0:00 구간의 나레이션에 반영한 대본
+  const effectiveScriptLines = (() => {
+    if (!result || result.scriptLines.length === 0) return [];
+    const hookIndex = Math.min(selectedHookIndex, result.hookingVariants.length - 1);
+    const selectedHook = result.hookingVariants[hookIndex];
+    return result.scriptLines.map((line, idx) =>
+      idx === 0 ? { ...line, audio: selectedHook } : line
+    );
+  })();
 
   const copyHashtags = async () => {
     if (!result) return;
@@ -595,29 +605,63 @@ export default function Home() {
                   <h3 className="text-xs font-semibold text-pink-400 uppercase tracking-wider">
                     🔥 시청 이탈 방지 3초 후킹 문구 (택 1)
                   </h3>
+                  <p className="text-[11px] text-slate-500 -mt-1">
+                    하나를 고르면 아래 타임라인 대본의 오프닝 대사에 바로 반영됩니다.
+                  </p>
                   <div className="space-y-2">
-                    {result.hookingVariants.map((hook, idx) => (
-                      <div
-                        key={idx}
-                        className="flex items-center justify-between bg-slate-950 border border-slate-800/80 rounded-xl p-3 text-sm text-slate-200 group hover:border-pink-500/40 transition-colors"
-                      >
-                        <span className="pr-2">
-                          {idx + 1}. {hook}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => copyToClipboard(hook, idx)}
-                          className="text-slate-400 hover:text-slate-100 p-1 rounded-lg hover:bg-slate-800 transition-colors shrink-0"
-                          aria-label={`후킹 문구 ${idx + 1} 복사`}
+                    {result.hookingVariants.map((hook, idx) => {
+                      const isSelected = idx === selectedHookIndex;
+                      return (
+                        <div
+                          key={idx}
+                          role="radio"
+                          aria-checked={isSelected}
+                          tabIndex={0}
+                          onClick={() => setSelectedHookIndex(idx)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              setSelectedHookIndex(idx);
+                            }
+                          }}
+                          className={`flex items-center justify-between gap-2 rounded-xl p-3 text-sm group transition-colors cursor-pointer border ${
+                            isSelected
+                              ? 'bg-pink-950/30 border-pink-500/60 text-slate-100'
+                              : 'bg-slate-950 border-slate-800/80 text-slate-200 hover:border-pink-500/40'
+                          }`}
                         >
-                          {copiedIndex === idx ? (
-                            <Check className="w-4 h-4 text-green-400" />
-                          ) : (
-                            <Copy className="w-4 h-4" />
-                          )}
-                        </button>
-                      </div>
-                    ))}
+                          <span className="flex items-center gap-2.5 pr-2">
+                            <span
+                              className={`shrink-0 w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                                isSelected ? 'border-pink-400' : 'border-slate-600'
+                              }`}
+                            >
+                              {isSelected && (
+                                <span className="w-1.5 h-1.5 rounded-full bg-pink-400" />
+                              )}
+                            </span>
+                            <span>
+                              {idx + 1}. {hook}
+                            </span>
+                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              copyToClipboard(hook, idx);
+                            }}
+                            className="text-slate-400 hover:text-slate-100 p-1 rounded-lg hover:bg-slate-800 transition-colors shrink-0"
+                            aria-label={`후킹 문구 ${idx + 1} 복사`}
+                          >
+                            {copiedIndex === idx ? (
+                              <Check className="w-4 h-4 text-green-400" />
+                            ) : (
+                              <Copy className="w-4 h-4" />
+                            )}
+                          </button>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -626,7 +670,7 @@ export default function Home() {
                     🎬 타임라인별 연출 및 나레이션
                   </h3>
                   <div className="space-y-3">
-                    {result.scriptLines.map((line, idx) => (
+                    {effectiveScriptLines.map((line, idx) => (
                       <div
                         key={idx}
                         className="bg-slate-950 border border-slate-800/80 rounded-xl p-4 text-sm space-y-2"
@@ -635,6 +679,11 @@ export default function Home() {
                           <span className="bg-slate-800 px-2 py-0.5 rounded text-indigo-300">
                             {line.time}
                           </span>
+                          {idx === 0 && (
+                            <span className="text-pink-400 text-[10px] font-sans font-semibold normal-case">
+                              선택한 후킹 문구 {selectedHookIndex + 1}번 반영됨
+                            </span>
+                          )}
                         </div>
                         <p className="text-xs text-amber-300/90 font-medium">
                           🎥 Visual: {line.visual}
