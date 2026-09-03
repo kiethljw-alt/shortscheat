@@ -19,9 +19,13 @@ export default function TermsPage() {
         <section className="space-y-2 text-sm text-slate-300 leading-relaxed">
           <h2 className="text-base font-semibold text-slate-100">제1조 (목적)</h2>
           <p>
-            이 약관은 [회사명/상호](&ldquo;회사&rdquo;)가 제공하는 AI 숏폼 대본 생성 서비스
-            &ldquo;ShortsCheat&rdquo;(이하 &ldquo;서비스&rdquo;)의 이용과 관련하여 회사와 이용자의
-            권리, 의무 및 책임사항을 정함을 목적으로 합니다.
+            이 약관은 ShortsCheat(운영자: 이재웅, 이하 &ldquo;회사&rdquo;)가 제공하는 AI 숏폼
+            대본 생성 서비스 &ldquo;ShortsCheat&rdquo;(이하 &ldquo;서비스&rdquo;)의 이용과 관련하여
+            회사와 이용자의 권리, 의무 및 책임사항을 정함을 목적으로 합니다.
+          </p>
+          <p className="text-xs text-slate-500">
+            회사는 사업자등록을 마치지 않은 개인 운영자이며, 사업자등록 완료 시 본
+            약관에 사업자 정보를 반영합니다.
           </p>
         </section>
 
@@ -72,11 +76,18 @@ export default function TermsPage() {
             </li>
             <li>
               전혀 사용하지 않은 크레딧에 한해 결제일로부터 7일 이내
-              [고객센터 이메일]로 환불을 요청할 수 있습니다.
+              kiethljw@gmail.com로 환불을 요청할 수 있습니다.
             </li>
             <li>
               AI 응답 오류 등 회사의 귀책사유로 대본 생성이 실패한 경우
               차감된 크레딧은 자동으로 환불(복구)됩니다.
+            </li>
+            <li>
+              월 정기구독은 최초 결제일을 기준으로 매 30일마다 9,900원이
+              자동으로 청구되며, 결제와 동시에 크레딧 30회가 지급됩니다.
+              구독은 마이페이지에서 언제든지 해지할 수 있고, 해지 시
+              다음 결제일부터 청구가 중단됩니다. 이미 청구된 당 회차
+              이용권은 제3항의 환불 기준을 따릅니다.
             </li>
           </ul>
         </section>
@@ -109,7 +120,7 @@ export default function TermsPage() {
             제7조 (문의)
           </h2>
           <p>
-            서비스 이용 및 결제와 관련한 문의는 [고객센터 이메일]로
+            서비스 이용 및 결제와 관련한 문의는 kiethljw@gmail.com로
             연락해 주세요.
           </p>
         </section>

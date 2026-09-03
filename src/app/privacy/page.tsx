@@ -55,6 +55,11 @@ export default function PrivacyPage() {
               <span className="font-medium text-slate-200">토스페이먼츠</span>{" "}
               — 결제 승인 및 처리
             </li>
+            <li>
+              <span className="font-medium text-slate-200">Sentry</span> —
+              서비스 오류 모니터링 및 장애 대응 (에러 발생 시점의 이용자
+              식별자, 요청 경로 등 기술적 정보가 포함될 수 있음)
+            </li>
           </ul>
         </section>
 
@@ -75,7 +80,9 @@ export default function PrivacyPage() {
           </h2>
           <p>
             이용자는 언제든지 자신의 개인정보 조회, 정정, 삭제, 처리 정지를
-            요청할 수 있으며, [고객센터 이메일]로 요청하실 수 있습니다.
+            요청할 수 있으며, kiethljw@gmail.com로 요청하실 수 있습니다.
+            회원 탈퇴는 마이페이지에서 직접 처리할 수 있으며, 탈퇴 시
+            계정 정보가 즉시 파기됩니다.
           </p>
         </section>
 
@@ -84,7 +91,7 @@ export default function PrivacyPage() {
             6. 개인정보 보호책임자
           </h2>
           <p>
-            성명: [담당자명] · 이메일: [고객센터 이메일]
+            성명: 이재웅 · 이메일: kiethljw@gmail.com
           </p>
         </section>
       </div>
