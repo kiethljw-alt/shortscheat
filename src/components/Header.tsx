@@ -1,8 +1,9 @@
 'use client';
 
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { User } from '@supabase/supabase-js';
-import { Zap, LogIn, LogOut, X, Plus } from 'lucide-react';
+import { Zap, LogIn, LogOut, X, Plus, UserRound } from 'lucide-react';
 
 type HeaderProps = {
   user: User | null;
@@ -62,7 +63,14 @@ export default function Header({
                 <Plus className="w-3.5 h-3.5" />
                 <span>충전</span>
               </button>
-              <span className="text-xs text-slate-400 hidden md:inline">{user.email}</span>
+              <Link
+                href="/mypage"
+                className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-200 px-2.5 py-1.5 rounded-lg border border-slate-800 hover:bg-slate-900 transition"
+              >
+                <UserRound className="w-3.5 h-3.5" />
+                <span className="hidden md:inline">{user.email}</span>
+                <span className="md:hidden">마이페이지</span>
+              </Link>
               <button
                 type="button"
                 onClick={onLogout}
