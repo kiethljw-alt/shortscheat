@@ -22,10 +22,10 @@ async function renewDueSubscriptions(req: Request) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  const secretKey = process.env.TOSS_SECRET_KEY;
+  const secretKey = process.env.TOSS_BILLING_SECRET_KEY;
   if (!secretKey) {
     return NextResponse.json(
-      { error: "TOSS_SECRET_KEY가 설정되지 않았습니다." },
+      { error: "TOSS_BILLING_SECRET_KEY가 설정되지 않았습니다." },
       { status: 500 }
     );
   }

@@ -5,10 +5,10 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { SUBSCRIPTION_PLAN } from "@/lib/subscriptionPlan";
 
 export async function POST(req: Request) {
-  const secretKey = process.env.TOSS_SECRET_KEY;
+  const secretKey = process.env.TOSS_BILLING_SECRET_KEY;
   if (!secretKey) {
     return NextResponse.json(
-      { error: "결제 설정이 완료되지 않았습니다. (TOSS_SECRET_KEY 누락)" },
+      { error: "결제 설정이 완료되지 않았습니다. (TOSS_BILLING_SECRET_KEY 누락)" },
       { status: 500 }
     );
   }
