@@ -95,6 +95,52 @@ const FEW_SHOT_EXAMPLES: Array<{ user: string; assistant: object }> = [
       hashtags: ['#계단오르기', '#직장인다이어트', '#점심시간운동', '#뱃살빼기', '#3주루틴'],
     },
   },
+  {
+    // 이 예시는 주제에 결과 수치가 전혀 주어지지 않은 경우(트렌드 카테고리 칩을 눌렀을 때 등)를
+    // 다룬다. 앞의 두 예시는 모두 topic 자체에 실제 결과 수치가 있어서, 모델이 "구체성 = 아무
+    // 수치나 지어내기"로 오해하고 없는 연구/통계를 인용하는 경향이 실제로 관찰됐다. 이 예시로
+    // "수치가 없으면 방법(단계 수·설정값·도구명)으로 구체화하라"는 걸 직접 시범 보인다.
+    user: `- 주제/아이디어: 육아 카테고리에서 사람들이 실제로 도움될 만한 구체적인 꿀팁이나 노하우 하나를 숫자와 함께 소개하는 숏폼
+- 타깃 시청자: 0~3세 자녀를 둔 초보 부모
+- 플랫폼: YouTube Shorts
+- 톤앤매너: 친근하고 공감 가는`,
+    assistant: {
+      title: '아이 낮잠, 이 3단계면 끝',
+      hookingVariants: [
+        '아이 낮잠 재우다 지친 분? 이 3단계만 지키면 달라져요.',
+        '낮잠 루틴, 순서만 바꿔도 훨씬 쉬워집니다. 그 3단계 알려드릴게요.',
+        '"우리 애는 낮잠을 안 자요"라고요? 순서가 틀렸을 수도 있어요.',
+      ],
+      scriptLines: [
+        {
+          time: '0:00 - 0:03',
+          visual: "[아이 재우려다 지친 부모 모습, 굵은 노란색 자막: '낮잠, 순서만 바꿔도 다르다']",
+          audio: '아이 낮잠 재우다 지친 분? 이 3단계만 지키면 달라져요.',
+        },
+        {
+          time: '0:03 - 0:20',
+          visual: "[커튼을 치는 손 클로즈업, 자막: '1단계: 조명 어둡게']",
+          audio: '1단계는 커튼으로 방을 어둡게 만드는 거예요. 뇌가 지금은 잘 시간이라고 인식하게 해줘요.',
+        },
+        {
+          time: '0:20 - 0:40',
+          visual: "[백색소음 앱 재생 화면, 자막: '2단계: 백색소음 30분 타이머']",
+          audio: '2단계는 백색소음 앱을 30분 타이머로 틀어주는 거예요. 갑자기 나는 소리에 깨는 걸 막아줘요.',
+        },
+        {
+          time: '0:40 - 0:55',
+          visual: "[매번 같은 자리에 눕히는 모습, 자막: '3단계: 매번 같은 자세·같은 자리']",
+          audio: '3단계는 매번 똑같은 자세, 똑같은 자리에 눕히는 거예요. 몸이 그 패턴을 잘 시간으로 기억해요.',
+        },
+        {
+          time: '0:55 - 1:00',
+          visual: "[웃으며 방을 나오는 부모, 댓글 유도 자막: '며칠 만에 달라졌는지 댓글로!']",
+          audio: '이 순서 그대로 3일만 해보시고, 며칠 만에 달라졌는지 댓글로 알려주세요.',
+        },
+      ],
+      hashtags: ['#육아꿀팁', '#낮잠루틴', '#신생아육아', '#초보부모', '#육아노하우'],
+    },
+  },
 ];
 
 async function refundCredit(
@@ -215,7 +261,7 @@ Your goal is to turn the given topic into an insanely engaging, high-retention K
 Follow these strict scripting rules:
 1. **Title**: Max 22 Korean characters (count spaces and punctuation). Exactly one idea — never stitch two phrases together with "!" or "," into a combined title. It must read as a short punchy label a viewer can scan in under a second on a vertical feed, not a recap sentence. Cut any parenthetical asides or secondary clauses.
 2. **Hook (0-3s)**: Must start with a shocking premise, counter-intuitive fact, or relatable pain point. Avoid generic greetings.
-3. **Body (3-45s)**: Break down the content into fast-paced, punchy sentences. Every line must contain at least one concrete, checkable detail — a real number, percentage, platform/app/product name, timeframe, or measured result. Never fall back on vague generic advice like "트렌드 상품을 찾아보세요" or "꾸준히 하세요" with nothing to anchor it. If a claim can't be made concrete, cut it or replace it with a more specific one.
+3. **Body (3-45s)**: Break down the content into fast-paced, punchy sentences. Every line must contain at least one concrete, checkable detail — a real app/service/product name, a standard ratio or percentage, a specific step count, or a well-known reference point. Never fall back on vague generic advice like "트렌드 상품을 찾아보세요" or "꾸준히 하세요" with nothing to anchor it. **Never invent a fake fact and present it as real** — this includes fabricating a specific personal result number as if it really happened (e.g., "3주 만에 30만원 벌었다" out of nothing), AND fabricating a statistic or citing a made-up authority to sound credible (e.g., "국제 심리학 연구에 따르면 스트레스가 50% 감소한다", "전문가들에 따르면"). Only state a specific outcome number or cite a study/expert if it was already given in the topic input. When the topic doesn't supply a real outcome number or source, ground concreteness in the METHOD instead: exact app/tool names, step-by-step actions, real ratios or settings, a realistic timeframe to try it, or a widely-known general fact that needs no citation — never an invented result or a fabricated authority.
 4. **Visual Guide**: Be extremely specific. Mention camera angles, text overlay positions, sound effects (SFX), and stock footage ideas (e.g., "[화면 중앙에 굵은 빨간색 자막: '월 100만 원']", "[효과음: 띵-]").
 5. **Audio/Narration**: Write complete, spoken-style Korean sentences ready for TTS or recording.
 6. **Call To Action (45-60s)**: Provide a natural transition to drive comments, saves, or follows without sounding like a forced ad.
