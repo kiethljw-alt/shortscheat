@@ -105,10 +105,30 @@ export async function POST(req: Request) {
     );
   }
 
+  const chargeData: { paymentKey?: string } = await chargeRes.json();
+
   const admin = createAdminClient();
   const nextBillingAt = new Date(
     Date.now() + SUBSCRIPTION_PLAN.intervalDays * 24 * 60 * 60 * 1000
   ).toISOString();
+
+  // 마이페이지 결제내역/크레딧 이력에서 조회할 수 있도록 결제 건을 orders에도 남긴다.
+  const { error: orderInsertError } = await admin.from("orders").insert({
+    order_id: orderId,
+    user_id: user.id,
+    package_id: SUBSCRIPTION_PLAN.id,
+    credits: SUBSCRIPTION_PLAN.credits,
+    amount: SUBSCRIPTION_PLAN.amount,
+    status: "paid",
+    payment_key: chargeData.paymentKey ?? null,
+    paid_at: new Date().toISOString(),
+  });
+
+  if (orderInsertError) {
+    // 결제/구독 자체는 이미 성공했으므로 주문 기록 실패는 흐름을 막지 않고 로그만 남긴다.
+    console.error("Subscription order insert failed:", orderInsertError);
+    Sentry.captureException(orderInsertError, { extra: { userId: user.id, orderId } });
+  }
 
   const { error: upsertError } = await admin.from("subscriptions").upsert({
     user_id: user.id,
@@ -138,7 +158,7 @@ export async function POST(req: Request) {
 
   const { data: newCredits, error: grantError } = await admin.rpc(
     "grant_subscription_credits",
-    { p_user_id: user.id, p_credits: SUBSCRIPTION_PLAN.credits }
+    { p_user_id: user.id, p_credits: SUBSCRIPTION_PLAN.credits, p_order_id: orderId }
   );
 
   if (grantError) {

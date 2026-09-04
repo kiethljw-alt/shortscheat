@@ -105,9 +105,28 @@ async function renewDueSubscriptions(req: Request) {
       continue;
     }
 
+    const chargeData: { paymentKey?: string } = await chargeRes.json();
+
+    // 마이페이지 결제내역/크레딧 이력에서 조회할 수 있도록 갱신 결제 건도 orders에 남긴다.
+    const { error: orderInsertError } = await admin.from("orders").insert({
+      order_id: orderId,
+      user_id: sub.user_id,
+      package_id: SUBSCRIPTION_PLAN.id,
+      credits: SUBSCRIPTION_PLAN.credits,
+      amount: SUBSCRIPTION_PLAN.amount,
+      status: "paid",
+      payment_key: chargeData.paymentKey ?? null,
+      paid_at: new Date().toISOString(),
+    });
+
+    if (orderInsertError) {
+      console.error(`Renewal order insert failed for user ${sub.user_id}:`, orderInsertError);
+      Sentry.captureException(orderInsertError, { extra: { userId: sub.user_id, orderId } });
+    }
+
     const { error: grantError } = await admin.rpc(
       "grant_subscription_credits",
-      { p_user_id: sub.user_id, p_credits: SUBSCRIPTION_PLAN.credits }
+      { p_user_id: sub.user_id, p_credits: SUBSCRIPTION_PLAN.credits, p_order_id: orderId }
     );
 
     if (grantError) {

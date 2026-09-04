@@ -4,11 +4,75 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { User } from '@supabase/supabase-js';
-import { ArrowLeft, Loader2, LogOut, RefreshCw, AlertTriangle, X } from 'lucide-react';
+import {
+  ArrowLeft,
+  Loader2,
+  LogOut,
+  RefreshCw,
+  AlertTriangle,
+  X,
+  Receipt,
+  History,
+} from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { SUBSCRIPTION_PLAN } from '@/lib/subscriptionPlan';
+import { getCreditPackage } from '@/lib/creditPackages';
 
 type SubscriptionStatus = 'active' | 'none' | 'loading';
+
+type OrderRow = {
+  order_id: string;
+  package_id: string;
+  credits: number;
+  amount: number;
+  paid_at: string | null;
+  created_at: string;
+};
+
+type LedgerRow = {
+  id: number;
+  delta: number;
+  balance_after: number;
+  reason: string;
+  created_at: string;
+};
+
+const REASON_LABELS: Record<string, string> = {
+  signup_bonus: '가입 축하 크레딧',
+  generation: '대본 생성',
+  generation_refund: '생성 실패 환불',
+  topup: '크레딧 충전',
+  subscription: '정기구독 크레딧 지급',
+};
+
+const PROVIDER_LABELS: Record<string, string> = {
+  google: '구글',
+  kakao: '카카오',
+};
+
+function getOrderLabel(packageId: string): string {
+  if (packageId === SUBSCRIPTION_PLAN.id) return SUBSCRIPTION_PLAN.label;
+  const pkg = getCreditPackage(packageId);
+  return pkg ? `크레딧 충전 · ${pkg.credits}회 (${pkg.label})` : packageId;
+}
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('ko-KR', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+}
+
+function formatDateTime(iso: string): string {
+  return new Date(iso).toLocaleString('ko-KR', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
 
 export default function MyPage() {
   const router = useRouter();
@@ -19,7 +83,11 @@ export default function MyPage() {
   const [loadingUser, setLoadingUser] = useState(true);
 
   const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus>('loading');
+  const [nextBillingAt, setNextBillingAt] = useState<string | null>(null);
   const [canceling, setCanceling] = useState(false);
+
+  const [orders, setOrders] = useState<OrderRow[]>([]);
+  const [ledger, setLedger] = useState<LedgerRow[]>([]);
 
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -46,11 +114,29 @@ export default function MyPage() {
 
       const { data: sub } = await supabase
         .from('subscriptions')
-        .select('status')
+        .select('status, next_billing_at')
         .eq('user_id', user.id)
         .eq('status', 'active')
         .maybeSingle();
       setSubscriptionStatus(sub ? 'active' : 'none');
+      setNextBillingAt(sub?.next_billing_at ?? null);
+
+      const { data: orderRows } = await supabase
+        .from('orders')
+        .select('order_id, package_id, credits, amount, paid_at, created_at')
+        .eq('user_id', user.id)
+        .eq('status', 'paid')
+        .order('paid_at', { ascending: false })
+        .limit(20);
+      if (orderRows) setOrders(orderRows);
+
+      const { data: ledgerRows } = await supabase
+        .from('credit_ledger')
+        .select('id, delta, balance_after, reason, created_at')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(20);
+      if (ledgerRows) setLedger(ledgerRows);
 
       setLoadingUser(false);
     })();
@@ -139,6 +225,12 @@ export default function MyPage() {
         <section className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 space-y-2">
           <h2 className="text-sm font-semibold text-slate-300">계정 정보</h2>
           <p className="text-sm text-slate-200">{user.email}</p>
+          <p className="text-xs text-slate-500">
+            {formatDate(user.created_at)} 가입
+            {user.app_metadata?.provider && (
+              <> · {PROVIDER_LABELS[user.app_metadata.provider] ?? user.app_metadata.provider}로 로그인</>
+            )}
+          </p>
         </section>
 
         <section className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 space-y-1">
@@ -158,10 +250,17 @@ export default function MyPage() {
           )}
           {subscriptionStatus === 'active' && (
             <div className="flex items-center justify-between gap-3 flex-wrap">
-              <p className="text-sm text-indigo-300 flex items-center gap-1.5">
-                <RefreshCw className="w-4 h-4 shrink-0" />
-                매달 {SUBSCRIPTION_PLAN.credits}회 자동 충전 이용 중
-              </p>
+              <div className="space-y-1">
+                <p className="text-sm text-indigo-300 flex items-center gap-1.5">
+                  <RefreshCw className="w-4 h-4 shrink-0" />
+                  매달 {SUBSCRIPTION_PLAN.credits}회 자동 충전 이용 중
+                </p>
+                {nextBillingAt && (
+                  <p className="text-xs text-slate-500">
+                    다음 결제 예정일: {formatDate(nextBillingAt)}
+                  </p>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={handleCancelSubscription}
@@ -174,6 +273,76 @@ export default function MyPage() {
           )}
           {subscriptionStatus === 'none' && (
             <p className="text-sm text-slate-500">이용 중인 정기구독이 없습니다.</p>
+          )}
+        </section>
+
+        <section className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 space-y-3">
+          <h2 className="text-sm font-semibold text-slate-300 flex items-center gap-1.5">
+            <Receipt className="w-4 h-4 shrink-0" />
+            결제내역
+          </h2>
+          {orders.length === 0 ? (
+            <p className="text-sm text-slate-500">결제 내역이 없습니다.</p>
+          ) : (
+            <ul className="divide-y divide-slate-800">
+              {orders.map((order) => (
+                <li
+                  key={order.order_id}
+                  className="py-3 first:pt-0 last:pb-0 flex items-center justify-between gap-3"
+                >
+                  <div>
+                    <p className="text-sm text-slate-200">{getOrderLabel(order.package_id)}</p>
+                    <p className="text-xs text-slate-500">
+                      {formatDate(order.paid_at ?? order.created_at)}
+                    </p>
+                  </div>
+                  <p className="text-sm font-medium text-slate-300 shrink-0">
+                    {order.amount.toLocaleString('ko-KR')}원
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="text-xs text-slate-500">
+            환불 관련 문의는{' '}
+            <a href="mailto:kiethljw@gmail.com" className="underline hover:text-slate-300">
+              kiethljw@gmail.com
+            </a>
+            으로 연락해 주세요.
+          </p>
+        </section>
+
+        <section className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 space-y-3">
+          <h2 className="text-sm font-semibold text-slate-300 flex items-center gap-1.5">
+            <History className="w-4 h-4 shrink-0" />
+            크레딧 변동 이력
+          </h2>
+          {ledger.length === 0 ? (
+            <p className="text-sm text-slate-500">아직 크레딧 변동 내역이 없습니다.</p>
+          ) : (
+            <ul className="divide-y divide-slate-800">
+              {ledger.map((entry) => (
+                <li
+                  key={entry.id}
+                  className="py-2.5 first:pt-0 last:pb-0 flex items-center justify-between gap-3"
+                >
+                  <div>
+                    <p className="text-sm text-slate-200">
+                      {REASON_LABELS[entry.reason] ?? entry.reason}
+                    </p>
+                    <p className="text-xs text-slate-500">{formatDateTime(entry.created_at)}</p>
+                  </div>
+                  <p
+                    className={`text-sm font-medium shrink-0 ${
+                      entry.delta > 0 ? 'text-emerald-400' : 'text-slate-400'
+                    }`}
+                  >
+                    {entry.delta > 0 ? '+' : ''}
+                    {entry.delta}회
+                  </p>
+                </li>
+              ))}
+            </ul>
           )}
         </section>
 
@@ -191,6 +360,16 @@ export default function MyPage() {
             회원 탈퇴하기
           </button>
         </section>
+
+        <p className="text-center text-xs text-slate-600">
+          <a href="/terms" target="_blank" className="underline hover:text-slate-400">
+            이용약관
+          </a>
+          {' · '}
+          <a href="/privacy" target="_blank" className="underline hover:text-slate-400">
+            개인정보처리방침
+          </a>
+        </p>
       </div>
 
       {deleteModalOpen && (
