@@ -7,6 +7,7 @@ import { getHistory, saveHistoryItem, deleteHistoryItem, HistoryItem } from '@/l
 import Header from '@/components/Header';
 import TrendingTopics from '@/components/TrendingTopics';
 import RechargeModal from '@/components/RechargeModal';
+import BetaNoticeModal from '@/components/BetaNoticeModal';
 import { createClient } from '@/lib/supabase/client';
 import { User } from '@supabase/supabase-js';
 
@@ -313,6 +314,8 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100 relative">
+      <BetaNoticeModal />
+
       {/* 1. 로그인 정보 및 실시간 크레딧 전달 Header */}
       <Header
         user={user}
