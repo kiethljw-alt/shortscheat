@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getCreditPackage } from "@/lib/creditPackages";
 
 export async function POST(req: Request) {
@@ -35,7 +36,11 @@ export async function POST(req: Request) {
 
   const orderId = `order_${crypto.randomUUID()}`;
 
-  const { error: insertError } = await supabase.from("orders").insert({
+  // credits/amount는 서버가 이 시점에 creditPackages.ts 가격표로만 계산하므로,
+  // 클라이언트가 임의의 크레딧/금액 조합으로 직접 주문을 만들 수 없도록 admin
+  // 클라이언트로 insert한다(RLS의 클라이언트 INSERT 정책은 제거됨).
+  const admin = createAdminClient();
+  const { error: insertError } = await admin.from("orders").insert({
     order_id: orderId,
     user_id: user.id,
     package_id: creditPackage.id,
